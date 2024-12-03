@@ -38,20 +38,6 @@ class CloudRemovalDataset(Dataset):
         return sample
 
 
-class MultiTaskLossWrapper(nn.Module):
-    def __init__(self):
-        super(MultiTaskLossWrapper, self).__init__()
-        self.log_vars = nn.Parameter(torch.zeros(2))
-
-    def forward(self, outputs, targets, criterion):
-        precision1 = torch.exp(-self.log_vars[0])
-        loss1 = precision1 * criterion(outputs[0], targets[0]) ** 2. + self.log_vars[0]
-        precision2 = torch.exp(-self.log_vars[1])
-        loss2 = precision2 * criterion(outputs[1], targets[1]) ** 2. + self.log_vars[1]
-        loss = loss1 + loss2
-        return loss, loss1, loss2, self.log_vars.data.tolist()
-
-
 def train(model, train_dataloader, optimizer, criterion, device, save_dir, save_cycle, epochs, resume=None,
           crop_size=240):
     if resume is not None:
@@ -64,7 +50,6 @@ def train(model, train_dataloader, optimizer, criterion, device, save_dir, save_
         print('Train from scratch...')
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
-    loss_fn = MultiTaskLossWrapper()
     best_loss = float("inf")
     for epoch in range(epochs):
         losses = {'loss': [], 'loss1': [], 'loss2': []}
@@ -81,11 +66,8 @@ def train(model, train_dataloader, optimizer, criterion, device, save_dir, save_
             res = model(cloud_imgs)
             cropped_res = model(cropped_cloud_imgs)
             loss1 = criterion(res, clear_imgs)
-            loss2 = criterion(res[:, :, y:y+crop_size, x:x+crop_size], cropped_res)
+            loss2 = criterion(res[:, :, y:y + crop_size, x:x + crop_size], cropped_res)
             loss = 0.8 * loss1 + 5 * loss2
-            # loss, loss1, loss2, _ = loss_fn([res, res[:, :, y:y + crop_size, x:x + crop_size]],
-            #                                 [clear_imgs, cropped_res],
-            #                                 criterion)
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
@@ -111,7 +93,7 @@ def main(args):
     train_dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True, num_workers=4)
     device = torch.device("cuda" if torch.cuda.is_available() and not args.no_cuda else "cpu")
     print(f'Using device: {device}')
-    model = models.IRDecloud().to(device)
+    model = models.MRFNet().to(device)
     criterion = nn.L1Loss().to(device)
     optimizer = torch.optim.Adam(params=filter(lambda x: x.requires_grad, model.parameters()), lr=args.lr,
                                  betas=(0.9, 0.999),
@@ -125,11 +107,11 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Train a model.')
     parser.add_argument('--data_dir', type=str, default=r'./dataset/res', help='Path to dataset')
     parser.add_argument('--save_dir', type=str, default=r'./checkpoints', help='Path to save checkpoints')
-    parser.add_argument('--save_cycle', type=int, default=10, help='Cycle of saving checkpoint')
+    parser.add_argument('--save_cycle', type=int, default=5, help='Cycle of saving checkpoint')
     parser.add_argument('--resume', type=str, default=None, help='Path to checkpoint file to resume training')
     parser.add_argument('--lr', type=float, default=0.0001, help='Learning rate')
-    parser.add_argument('--batch_size', type=int, default=2, help='Batch size of each data batch')
+    parser.add_argument('--batch_size', type=int, default=4, help='Batch size of each data batch')
     parser.add_argument('--no-cuda', action='store_true', default=False, help='Disable CUDA')
-    parser.add_argument('--epochs', type=int, default=80, help='Epochs')
+    parser.add_argument('--epochs', type=int, default=50, help='Epochs')
     args = parser.parse_args()
     main(args)
