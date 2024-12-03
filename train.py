@@ -9,7 +9,7 @@ import random
 import numpy as np
 from tqdm import tqdm
 import math
-from models import AODNet, C2PNet, dehazeformer, FFA, GridDehazeNet, gunet, MixDehazeNet, models
+from models import models
 
 
 class CloudRemovalDataset(Dataset):
@@ -112,13 +112,6 @@ def main(args):
     device = torch.device("cuda" if torch.cuda.is_available() and not args.no_cuda else "cpu")
     print(f'Using device: {device}')
     model = models.IRDecloud().to(device)
-    # model = AODNet.dehaze_net().to(device)
-    # model = C2PNet.C2PNet(gps=3, blocks=19).to(device)
-    # model = dehazeformer.dehazeformer_b().to(device)
-    # model = FFA.FFA(gps=3,blocks=19).to(device)
-    # model = GridDehazeNet.GridDehazeNet().to(device)
-    # model = gunet.gunet_b().to(device)
-    # model = MixDehazeNet.MixDehazeNet_b().to(device)
     criterion = nn.L1Loss().to(device)
     optimizer = torch.optim.Adam(params=filter(lambda x: x.requires_grad, model.parameters()), lr=args.lr,
                                  betas=(0.9, 0.999),
