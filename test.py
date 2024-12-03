@@ -4,7 +4,7 @@ from torchvision import transforms
 from PIL import Image
 import argparse
 import math
-from models import AODNet, C2PNet, dehazeformer, FFA, GridDehazeNet, MixDehazeNet, models, models_wb
+from models import models
 from tqdm import tqdm
 
 
@@ -51,15 +51,7 @@ def unnormalize(tensor, mean, std):
 def main(args):
     device = torch.device("cuda" if torch.cuda.is_available() and not args.no_cuda else "cpu")
     print(f'Using device: {device}')
-    # model = models.IRDecloud().to(device)
-    # model = models_wb.IRDecloudTest().to(device)
-    # model = AODNet.dehaze_net().to(device)
-    model = C2PNet.C2PNet(gps=3, blocks=19).to(device)
-    # model = dehazeformer.dehazeformer_b().to(device)
-    # model = FFA.FFA(gps=3,blocks=19).to(device)
-    # model = GridDehazeNet.GridDehazeNet().to(device)
-    # model = gunet.gunet_b().to(device)
-    # model = MixDehazeNet.MixDehazeNet_b().to(device)
+    model = models.MRFNet().to(device)
     print("Loading model: {}".format(args.model_path))
     if device == torch.device('cpu'):
         model.load_state_dict(torch.load(args.model_path, map_location=torch.device('cpu')))
@@ -84,15 +76,16 @@ def main(args):
         input_blocks = split_image(cloud_img, block_size=(args.block_size, args.block_size))
         transform = transforms.Compose([
             transforms.ToTensor(),
-            transforms.Normalize([0.34807074], [0.11415784])])
+            # transforms.Normalize([0.34807074], [0.11415784])
+        ])
         res_blocks = []
         print("Cloud removing...")
         with torch.no_grad():
             for block in tqdm(input_blocks):
                 input_tensor = transform(block).unsqueeze(0).to(device)
                 print(input_tensor.shape)
-                out = unnormalize(model(input_tensor), [0.34807074], [0.11415784])
-                # out = unnormalize(input_tensor, [0.34807074], [0.11415784])
+                out = model(input_tensor)
+                # out = unnormalize(out, [0.34807074], [0.11415784])
                 block_image = transforms.ToPILImage()(out.clamp(0, 1).squeeze(0))
                 res_blocks.append(block_image)
         res_img = join_blocks(res_blocks, cloud_img.size)
@@ -105,10 +98,10 @@ def main(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Test a model.')
-    parser.add_argument('--test_img', type=str, default=r'./dataset/test/A1_small_cloud.png', help='Path to dataset')
-    parser.add_argument('--model_path', type=str, default=r'./checkpoints/self_batch_best_noloss2.pth', help='Path to pretrained model')
+    parser.add_argument('--test_img', type=str, help='Path to dataset')
+    parser.add_argument('--model_path', type=str, help='Path to pretrained model')
     parser.add_argument('--save_dir', type=str, default=r'./res', help='Path to save predict results')
     parser.add_argument('--no-cuda', action='store_true', default=False, help='Disable CUDA')
-    parser.add_argument('--block_size', type=int, default=960, help='Block size for imput image')
+    parser.add_argument('--block_size', type=int, default=480, help='Block size for input image')
     args = parser.parse_args()
     main(args)
