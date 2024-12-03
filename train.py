@@ -9,7 +9,7 @@ import random
 import numpy as np
 from tqdm import tqdm
 import math
-from models import MRFNet
+from model import MRFNet
 
 
 class CloudRemovalDataset(Dataset):
