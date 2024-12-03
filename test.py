@@ -4,7 +4,7 @@ from torchvision import transforms
 from PIL import Image
 import argparse
 import math
-from models import MRFNet
+from model import MRFNet
 from tqdm import tqdm
 
 
