@@ -4,7 +4,7 @@ from torchvision import transforms
 from PIL import Image
 import argparse
 import math
-from models import models
+from models import MRFNet
 from tqdm import tqdm
 
 
@@ -51,7 +51,7 @@ def unnormalize(tensor, mean, std):
 def main(args):
     device = torch.device("cuda" if torch.cuda.is_available() and not args.no_cuda else "cpu")
     print(f'Using device: {device}')
-    model = models.MRFNet().to(device)
+    model = MRFNet().to(device)
     print("Loading model: {}".format(args.model_path))
     if device == torch.device('cpu'):
         model.load_state_dict(torch.load(args.model_path, map_location=torch.device('cpu')))
