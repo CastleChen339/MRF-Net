@@ -9,7 +9,7 @@ import random
 import numpy as np
 from tqdm import tqdm
 import math
-from models import models
+from models import MRFNet
 
 
 class CloudRemovalDataset(Dataset):
@@ -93,7 +93,7 @@ def main(args):
     train_dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True, num_workers=4)
     device = torch.device("cuda" if torch.cuda.is_available() and not args.no_cuda else "cpu")
     print(f'Using device: {device}')
-    model = models.MRFNet().to(device)
+    model = MRFNet().to(device)
     criterion = nn.L1Loss().to(device)
     optimizer = torch.optim.Adam(params=filter(lambda x: x.requires_grad, model.parameters()), lr=args.lr,
                                  betas=(0.9, 0.999),
